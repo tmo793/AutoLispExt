@@ -12,23 +12,24 @@ const outputDir = path.join(testDir + "/OutputFile");
 let config = vscode.workspace.getConfiguration();
 
 async function  restoreConfig() {
- 	await config.update('format.CloseParenthesisStyle','New line with outer identation',vscode.ConfigurationTarget.Global);
- 	await config.update('format.MaxLineChars',85,vscode.ConfigurationTarget.Global);
- 	await config.update('format.LongListFormatStyle','Fill to Margin',vscode.ConfigurationTarget.Global);
- 	await config.update('format.NarrowStyleIndent',2,vscode.ConfigurationTarget.Global);
+ 	// await config.update('format.CloseParenthesisStyle','New line with outer identation',vscode.ConfigurationTarget.Global);
+ 	await config.update('format.CloseParenthesisStyle','New line with outer identation');
+ 	await config.update('format.MaxLineChars',85);
+ 	await config.update('format.LongListFormatStyle','Fill to Margin');
+ 	await config.update('format.NarrowStyleIndent',2);
 }
 
 async function setClosedParenInSameLine(sameline : string){
-	await config.update('format.CloseParenthesisStyle',sameline,vscode.ConfigurationTarget.Global);
+	await config.update('format.CloseParenthesisStyle',sameline);
 }
 async function setMaxLineChars(maxchar : number){
-	await config.update('format.MaxLineChars',maxchar,vscode.ConfigurationTarget.Global);
+	await config.update('format.MaxLineChars',maxchar);
 }
 async function setLongListFormat(singleCol : string){
-	await config.update('format.LongListFormatStyle',singleCol,vscode.ConfigurationTarget.Global);
+	await config.update('format.LongListFormatStyle',singleCol);
 }
 async function setIndentSpaces(indent : number){
-	await config.update('format.NarrowStyleIndent',indent,vscode.ConfigurationTarget.Global);
+	await config.update('format.NarrowStyleIndent',indent);
 }
 
 fs.mkdir(outputDir, { recursive: true }, (err) => {
@@ -56,7 +57,7 @@ function comparefileSync(i : number, output : string,fmt : string, baseline : st
 	}
 }
 
-suite("Lisp Formatter Tests", function () {
+suite.only("Lisp Formatter Tests", function () {
 	// Notes:
 	// Format test is a setting sensitive which depends on the format settings defined 
 	// in the fmtconfig.ts
@@ -328,6 +329,39 @@ suite("Lisp Formatter Tests", function () {
 			await setMaxLineChars(30);
 			let fmt = LispFormatter.format(doc, null);
 			comparefileSync(i,output,fmt,baseline);
+		}
+		catch (err) {
+			assert.fail(`The lisp format test case ${i} failed`);
+		}
+	});
+
+	test.only("Lisp Formatter Test case 17",async function (done) {
+		// Test format selection
+		// MaxLineChars: 30
+		// NarrowStyleIndent: 8
+		let i = 17;
+		try {
+			const [source, output, baseline] = getFileName(i);
+			let doc = ReadonlyDocument.open(source);
+			fs.writeFileSync(output,doc.fileContent);
+			await setIndentSpaces(2);
+			await setMaxLineChars(65);
+			const anchor = new vscode.Position(4,4);
+			const active = new vscode.Position(21,3);
+			const range = new vscode.Selection(anchor,active);
+			// let startPos = new vscode.Position(editor.selection.start.line, editor.selection.start.character);
+			// let endPos = new vscode.Position(editor.selection.end.line, editor.selection.end.character);
+			let fmt = LispFormatter.format(doc, range);
+			let doc1 = await vscode.workspace.openTextDocument(output);
+			let filename = doc1.fileName;
+			console.log(`filename is ${filename}`);
+			let wholestring = doc1.getText(range);
+			// doc1.getText(range).replace(wholestring,fmt);
+            // vscode.TextEdit.replace(range, fmt);
+			// await doc1.save();
+			fmt = doc1.getText(range).replace(wholestring,fmt);
+			comparefileSync(i,output,fmt,baseline);
+			(done);
 		}
 		catch (err) {
 			assert.fail(`The lisp format test case ${i} failed`);
